@@ -1,0 +1,8 @@
+{
+  "name": "CULINOVA - Recipe & Food Cost Management System",
+  "description": "Professional culinary intelligence platform for recipes, ingredients, food cost analysis, HPP calculation, margin tracking, sub-recipes, and Google Sheets integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
