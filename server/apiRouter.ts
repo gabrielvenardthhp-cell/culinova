@@ -3,6 +3,7 @@ import multer from 'multer';
 import { culinovaStore } from './db/dataStore.ts';
 import { googleSheetsService } from './db/googleSheetsService.ts';
 import { googleDriveService } from './db/googleDriveService.ts';
+import { cloudinaryService } from './db/cloudinaryService.ts';
 import { Recipe, RecipeIngredientItem, RecipeVersion, Ingredient, SalesMenu, SubRecipe, SubRecipeIngredientItem } from './db/types.ts';
 
 export const apiRouter = express.Router();
@@ -61,7 +62,7 @@ apiRouter.post('/auth/logout', (req: Request, res: Response) => {
   return sendSuccess(res, null, 'Logged out successfully');
 });
 
-// --- GOOGLE DRIVE IMAGE UPLOAD ---
+// --- IMAGE UPLOAD (CLOUDINARY) ---
 apiRouter.post('/upload-image', (req: Request, res: Response) => {
   upload.single('image')(req, res, async (err: any) => {
     if (err) {
@@ -88,7 +89,7 @@ apiRouter.post('/upload-image', (req: Request, res: Response) => {
       const type = (req.body.type === 'menu' ? 'menu' : 'recipe') as 'recipe' | 'menu';
       const entityName = req.body.name || req.body.title || req.file.originalname;
 
-      const result = await googleDriveService.uploadImage(
+      const result = await cloudinaryService.uploadImage(
         req.file.buffer,
         req.file.originalname,
         req.file.mimetype,
@@ -103,7 +104,8 @@ apiRouter.post('/upload-image', (req: Request, res: Response) => {
         });
       }
 
-      // If recipe_id or menu_id is passed, save directly to Google Sheets & store
+      // If recipe_id or menu_id is passed, save the Cloudinary URL/public ID
+      // directly to Google Sheets without changing the rest of the recipe/menu logic.
       if (req.body.recipe_id && result.url && result.fileId) {
         const rec = culinovaStore.recipes.find(r => r.id === req.body.recipe_id);
         if (rec) {
@@ -131,15 +133,26 @@ apiRouter.post('/upload-image', (req: Request, res: Response) => {
         url: result.url,
       });
     } catch (uploadErr: any) {
-      console.error('Error in /upload-image:', uploadErr.message);
+      console.error('Error in /upload-image:', uploadErr?.message || uploadErr);
       return res.status(500).json({
         success: false,
-        message: uploadErr.message || 'Failed to upload image',
+        message: uploadErr?.message || 'Failed to upload image',
       });
     }
   });
 });
 
+apiRouter.post('/cloudinary/test-connection', async (_req: Request, res: Response) => {
+  return sendSuccess(res, {
+    configured: cloudinaryService.isConfigured(),
+    message: cloudinaryService.isConfigured()
+      ? 'Cloudinary credentials are configured.'
+      : 'Cloudinary belum dikonfigurasi di environment variables.',
+  });
+});
+
+// Legacy Google Drive diagnostic endpoint kept temporarily for compatibility.
+// Image uploads no longer use Google Drive.
 apiRouter.post('/drive/test-connection', async (req: Request, res: Response) => {
   const result = await googleDriveService.testConnection();
   return sendSuccess(res, result);
